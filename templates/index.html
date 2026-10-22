@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Помощник первичной обработки заявок | Офисная мебель</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Шапка приложения -->
+    <header class="app-header">
+      <div class="logo-badge">
+        <span class="logo-icon">🪑</span>
+        <div>
+          <h1>AI-Помощник обработки заявок</h1>
+          <p class="subtitle">Первичная квалификация, извлечение данных и подготовка ответов (GigaChat API)</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="status-dot"></span>
+        <span class="status-label">Готов к работе</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Левая колонка: Форма ввода и быстрые тесты -->
+      <section class="card input-section">
+        <div class="section-title-row">
+          <h2>Входящая заявка</h2>
+          <span class="step-badge">Шаг 1</span>
+        </div>
+
+        <!-- Кнопки быстрого выбора тестовых заявок -->
+        <div class="test-presets-container">
+          <label class="presets-label">Готовые тестовые сценарии:</label>
+          <div class="preset-buttons-group">
+            <button type="button" class="btn btn-preset" id="preset1Btn" title="Компания Альфа-Логистик, 40 мест, 1.5 млн руб">
+              <span class="preset-tag tag-full">Полная заявка</span>
+              <span class="preset-title">1. «Альфа-Логистик» (40 мест, 1.5 млн)</span>
+            </button>
+            <button type="button" class="btn btn-preset" id="preset2Btn" title="Вопрос о цене кресел, мало деталей">
+              <span class="preset-tag tag-partial">Неполная заявка</span>
+              <span class="preset-title">2. «Сколько стоят кресла?»</span>
+            </button>
+            <button type="button" class="btn btn-preset" id="preset3Btn" title="Срыв доставки, возврат предоплаты">
+              <span class="preset-tag tag-conflict">Конфликт / Жалоба</span>
+              <span class="preset-title">3. «Срыв доставки и возврат денег»</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Поля формы заявки -->
+        <div class="form-container">
+          <div class="form-row-header">
+            <span class="form-subtitle">Заполните поля формы или выберите готовый сценарий:</span>
+            <button type="button" class="btn-text-action" id="clearTextBtn">Очистить форму</button>
+          </div>
+
+          <!-- Сетка полей: Имя и Телефон -->
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="clientName">Имя клиента / Контактное лицо:</label>
+              <input type="text" id="clientName" class="form-input" placeholder="Например: Иван Смирнов">
+            </div>
+            <div class="form-group">
+              <label for="clientPhone">Телефон / Контакт для связи:</label>
+              <input type="text" id="clientPhone" class="form-input" placeholder="+7 (999) 000-00-00">
+            </div>
+          </div>
+
+          <!-- Поле: Компания -->
+          <div class="form-group">
+            <label for="clientCompany">Компания / Организация (если указана):</label>
+            <input type="text" id="clientCompany" class="form-input" placeholder="Например: ООО «Альфа-Логистик»">
+          </div>
+
+          <!-- Поле: Текст сообщения / заявка -->
+          <div class="form-group">
+            <label for="inquiryText">Текст обращения / Описание потребности клиента:</label>
+            <textarea
+              id="inquiryText"
+              rows="6"
+              placeholder="Опишите, какая мебель нужна (столы, кресла, шкафы), количество рабочих мест, бюджет, сроки или суть возникшей проблемы..."
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Кнопка запуска обработки -->
+        <div class="action-row">
+          <button type="button" class="btn btn-primary" id="processBtn">
+            <span class="btn-icon">⚡</span>
+            <span>Обработать заявку</span>
+          </button>
+        </div>
+
+        <!-- Сообщение об ошибке -->
+        <div class="error-banner hidden" id="errorBanner">
+          <div class="error-icon">⚠️</div>
+          <div class="error-content">
+            <strong id="errorTitle">Ошибка при обработке</strong>
+            <p id="errorMessage">Описание ошибки</p>
+          </div>
+          <button type="button" class="btn-close-error" id="closeErrorBtn">&times;</button>
+        </div>
+      </section>
+
+      <!-- Правая колонка: Индикатор загрузки и карточка результата -->
+      <section class="card output-section">
+        <div class="section-title-row">
+          <h2>Результат анализа</h2>
+          <span class="step-badge">Шаг 2</span>
+        </div>
+
+        <!-- Заглушка до первого анализа -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📋</div>
+          <h3>Ожидание заявки</h3>
+          <p>Выберите один из тестовых примеров слева или введите произвольный текст обращения и нажмите «Обработать заявку».</p>
+        </div>
+
+        <!-- Индикатор загрузки -->
+        <div class="loading-state hidden" id="loadingState">
+          <div class="spinner"></div>
+          <h3>GigaChat анализирует обращение...</h3>
+          <p class="loading-hint">Идет классификация лида, извлечение параметров и составление черновика ответа</p>
+        </div>
+
+        <!-- Карточка результата анализа -->
+        <div class="result-card hidden" id="resultCard">
+          <!-- Верхняя полоска: Тип лида и статус участия человека -->
+          <div class="result-header-badges">
+            <div class="badge-item">
+              <span class="meta-label">Тип лида:</span>
+              <span class="badge" id="leadTypeBadge">Целевой</span>
+            </div>
+            <div class="badge-item">
+              <span class="meta-label">Участие человека:</span>
+              <span class="badge" id="needsHumanBadge">Не требуется</span>
+            </div>
+          </div>
+
+          <!-- Индикатор защиты персональных данных (анонимизация) -->
+          <div class="privacy-alert hidden" id="privacyAlertBox">
+            <span class="privacy-icon">🛡️</span>
+            <div>
+              <strong>Конфиденциальность защищена:</strong>
+              <p id="privacyAlertText">Персональные данные были обезличены перед отправкой в AI и восстановлены в ответе.</p>
+            </div>
+          </div>
+
+          <!-- Модуль: Обезличенный текст для нейросети -->
+          <div class="anonymized-module hidden" id="anonymizedModule">
+            <div class="anonymized-module-header">
+              <div class="anonymized-module-title">
+                <span class="anon-icon">🔒</span>
+                <div>
+                  <strong>Обезличенный текст (отправлен в GigaChat):</strong>
+                  <span class="anon-subtext">То, как обращение видит нейросеть — все персональные данные заменены на временные токены</span>
+                </div>
+              </div>
+              <button type="button" class="btn-toggle-anon" id="toggleAnonBtn">Скрыть</button>
+            </div>
+            <div class="anonymized-content-box" id="anonymizedContentBox">
+              <pre id="anonymizedTextValue"></pre>
+            </div>
+          </div>
+
+          <!-- Информационный блок Битрикс24 CRM -->
+          <div class="b24-alert hidden" id="b24AlertBox">
+            <span class="b24-icon">🏢</span>
+            <div class="b24-content">
+              <div class="b24-header-row">
+                <strong id="b24Title">Синхронизировано с Битрикс24</strong>
+                <span class="b24-status-badge" id="b24StatusBadge">Лид создан</span>
+              </div>
+              <p id="b24Description">Заявка успешно экспортирована в CRM.</p>
+              <div class="b24-links-row" id="b24LinksRow">
+                <a href="#" target="_blank" class="b24-link-btn" id="b24LeadLink">
+                  <span>Открыть Лид в CRM</span> ↗
+                </a>
+                <a href="#" target="_blank" class="b24-link-btn b24-task-btn hidden" id="b24TaskLink">
+                  <span>Срочная задача</span> ↗
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Причина передачи человеку (если требуется) -->
+          <div class="human-alert hidden" id="humanAlertBox">
+            <span class="alert-icon">🚨</span>
+            <div>
+              <strong>Требуется подключение менеджера / руководителя:</strong>
+              <p id="humanReasonText">—</p>
+            </div>
+          </div>
+
+          <!-- Основные поля анализа -->
+          <div class="result-body">
+            <!-- Компания и суть -->
+            <div class="result-grid-two">
+              <div class="field-card">
+                <span class="field-label">Организация / Клиент:</span>
+                <span class="field-value" id="companyValue">Не указано</span>
+              </div>
+              <div class="field-card">
+                <span class="field-label">Рекомендуемый следующий шаг:</span>
+                <span class="field-value highlight" id="nextStepValue">—</span>
+              </div>
+            </div>
+
+            <!-- Суть запроса -->
+            <div class="field-card full-width">
+              <span class="field-label">Краткая суть обращения:</span>
+              <p class="field-text" id="summaryValue">—</p>
+            </div>
+
+            <!-- Известные данные (Ключевые параметры) -->
+            <div class="field-card full-width">
+              <span class="field-label">Известные параметры заказа:</span>
+              <div class="key-data-grid" id="keyDataContainer">
+                <!-- Заполняется динамически скриптом -->
+              </div>
+            </div>
+
+            <!-- Чего не хватает (missing_data) -->
+            <div class="field-card full-width">
+              <span class="field-label">Чего не хватает для расчета / оформления:</span>
+              <div class="missing-tags" id="missingDataContainer">
+                <!-- Заполняется динамически -->
+              </div>
+            </div>
+
+            <!-- Черновик ответа -->
+            <div class="reply-card full-width">
+              <div class="reply-header">
+                <span class="field-label">💬 Черновик ответа клиенту:</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="copyReplyBtn">
+                  <span class="copy-icon">📋</span>
+                  <span id="copyBtnText">Скопировать ответ</span>
+                </button>
+              </div>
+              <div class="reply-content" id="replyDraftValue">
+                <!-- Текст черновика -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Офисная мебель и сервис • AI-обработка входящего потока заявок • GigaChat API</p>
+    </footer>
+  </div>
+
+  <!-- Данные тестовых заявок для JavaScript -->
+  <script>
+    window.TEST_INQUIRIES = {{ test_inquiries | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
